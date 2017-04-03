@@ -53,5 +53,13 @@ if __name__ == '__main__':
     u = Function(V)
     solve(a == L, u, bc)
 
-    vtk_file = File("../output/elasticity/solution.pvd")
+    vtk_file = File("../output/elasticity/displacement.pvd")
     vtk_file << u
+
+    s = sigma(u) - (1. / 3) * tr(sigma(u)) * Identity(3)
+    von_Mises = sqrt(3. / 2 * inner(s, s))
+    V = FunctionSpace(mesh, 'P', 1)
+    von_Mises = project(von_Mises, V)
+
+    vtk_file = File("../output/elasticity/stress.pvd")
+    vtk_file << von_Mises
