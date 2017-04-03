@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from fenics import *
 
 from dolfin.cpp.io import File
@@ -32,3 +34,16 @@ if __name__ == '__main__':
 
     vtkFile = File('output/poisson/solution.pvd')
     vtkFile << u
+
+    # Проверяем, что решение вышло точным
+    error_L2 = errornorm(u_D, u, 'L2')
+
+    vertex_values_u_d = u_D.compute_vertex_values(island)
+    vertex_values_u = u.compute_vertex_values(island)
+
+    import numpy as np
+
+    error_max = np.max(np.abs(vertex_values_u - vertex_values_u_d))
+
+    print('error_L2 = ', error_L2)
+    print('error_max = ', error_max)
