@@ -1,19 +1,22 @@
 # coding=utf-8
 from dolfin import *
 from dolfin.cpp.io import File
-from dolfin.cpp.mesh import UnitSquareMesh
+from dolfin.cpp.mesh import Point
+from mshr import *
 
 
 class HeatSolver:
     def __init__(self):
-        self.mesh = UnitSquareMesh(16, 16)
+        self.mesh = generate_mesh(Cylinder(Point(0.0, 0.0, 10.0),
+                                           Point(0.0, 0.0, 0.0),
+                                           100, 100), 64)
         self.time_step = 0.1
         self.n_steps = 100
 
         self.function_space = FunctionSpace(self.mesh, 'P', 2)
 
         self.dirichlet_bc = self._create_dirichlet_bc()
-        self.rhs_function = Constant(12.0)
+        self.rhs_function = Constant(0.0)
 
         self.vtk_file = File("./output/heat_problem/solution.pvd")
 
