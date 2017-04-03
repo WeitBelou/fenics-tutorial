@@ -9,16 +9,16 @@ class HeatSolver:
     def __init__(self):
         self.mesh = generate_mesh(Cylinder(Point(0.0, 0.0, 10.0),
                                            Point(0.0, 0.0, 0.0),
-                                           100, 100), 64)
+                                           16, 16), 32)
         self.time_step = 0.1
-        self.n_steps = 100
+        self.n_steps = 30
 
         self.function_space = FunctionSpace(self.mesh, 'P', 2)
 
         self.dirichlet_bc = self._create_dirichlet_bc()
-        self.rhs_function = Constant(0.0)
+        self.rhs_function = Constant(5.0)
 
-        self.vtk_file = File("./output/heat_problem/solution.pvd")
+        self.vtk_file = File("../output/heat_problem/solution.pvd")
 
     def run(self):
         u_prev = project(self.dirichlet_function, self.function_space)
@@ -32,6 +32,7 @@ class HeatSolver:
         a, L = lhs(F), rhs(F)
 
         u = Function(self.function_space)
+
         t = 0
         for n in range(self.n_steps):
             t += self.time_step
@@ -46,8 +47,8 @@ class HeatSolver:
         def dirichlet_boundary(x, on_boundary):
             return on_boundary
 
-        self.dirichlet_function = Expression('c * exp(-l * t)',
-                                             degree=2, c=12.0, l=12.0, t=0)
+        self.dirichlet_function = Expression('0.0',
+                                             degree=2, c=200.0, l=200.0, t=0)
         return DirichletBC(self.function_space,
                            self.dirichlet_function,
                            dirichlet_boundary)
