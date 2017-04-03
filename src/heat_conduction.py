@@ -47,8 +47,7 @@ class HeatSolver:
         def dirichlet_boundary(x, on_boundary):
             return on_boundary
 
-        self.dirichlet_function = Expression('0.0',
-                                             degree=2, c=200.0, l=200.0, t=0)
+        self.dirichlet_function = Expression('0.0', degree=2, t=0)
         return DirichletBC(self.function_space,
                            self.dirichlet_function,
                            dirichlet_boundary)
