@@ -4,45 +4,52 @@ from dolfin.cpp.io import File
 from dolfin.cpp.mesh import UnitSquareMesh
 
 
-def main():
-    mesh = UnitSquareMesh(32, 32)
-    V = FunctionSpace(mesh, 'P', 1)
+class HeatSolver:
+    def __init__(self):
+        self.mesh = UnitSquareMesh(16, 16)
+        self.time_step = 0.1
+        self.n_steps = 100
 
-    u_D = Expression('1 + x[0] + x[1] + 0.3 * t',
-                     degree=2, t=0)
+        self.function_space = FunctionSpace(self.mesh, 'P', 2)
 
-    def boundary(x, on_boundary):
-        return on_boundary
+        self.dirichlet_bc = self._create_dirichlet_bc()
+        self.rhs_function = Constant(12.0)
 
-    bc = DirichletBC(V, u_D, boundary)
+        self.vtk_file = File("./output/heat_problem/solution.pvd")
 
-    u_n = project(u_D, V)
+    def run(self):
+        u_prev = project(self.dirichlet_function, self.function_space)
 
-    u = TrialFunction(V)
-    v = TestFunction(V)
+        u = TrialFunction(self.function_space)
+        v = TestFunction(self.function_space)
 
-    f = Constant(2.0)
+        F = (u * v * dX
+             + self.time_step * dot(grad(u), grad(v)) * dX
+             - (u_prev + self.time_step * self.rhs_function) * v * dX)
+        a, L = lhs(F), rhs(F)
 
-    dt = 0.3
-    F = u * v * dX + dt * dot(grad(u), grad(v)) * dX - (u_n + dt * f) * v * dX
-    a, L = lhs(F), rhs(F)
+        u = Function(self.function_space)
+        t = 0
+        for n in range(self.n_steps):
+            t += self.time_step
+            self.dirichlet_bc.t = t
 
-    u = Function(V)
-    t = 0
+            solve(a == L, u, self.dirichlet_bc)
+            u_prev.assign(u)
 
-    num_steps = int(30 / dt)
+            self.vtk_file << u
 
-    vtk_file = File('../output/solution.pvd')
+    def _create_dirichlet_bc(self):
+        def dirichlet_boundary(x, on_boundary):
+            return on_boundary
 
-    for n in range(num_steps):
-        t += dt
-        u_D.t = t
-
-        solve(a == L, u, bc)
-        u_n.assign(u)
-
-        vtk_file << u
+        self.dirichlet_function = Expression('c * exp(-l * t)',
+                                             degree=2, c=12.0, l=12.0, t=0)
+        return DirichletBC(self.function_space,
+                           self.dirichlet_function,
+                           dirichlet_boundary)
 
 
 if __name__ == '__main__':
-    main()
+    solver = HeatSolver()
+    solver.run()
