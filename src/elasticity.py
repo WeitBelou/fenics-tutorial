@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # Создаём mesh и функциональное пространство
     mesh = generate_mesh(Cylinder(Point(0.0, 0.0, L),
                                   Point(0.0, 0.0, 0.0),
-                                  R, R), 32)
+                                  R, R), 64)
     V = VectorFunctionSpace(mesh, 'P', 1)
 
     # Настраиваем граничные условия
