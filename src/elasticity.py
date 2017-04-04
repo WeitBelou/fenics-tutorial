@@ -4,62 +4,69 @@ from dolfin.cpp.mesh import Point
 from fenics import *
 from mshr import generate_mesh, Cylinder
 
-if __name__ == '__main__':
-    # Объявляем кучу переменных
-    L = 0.2
-    R = 1.0
-    mu = 1
-    rho = 1
-    delta = R / L
-    gamma = 0.4 * delta ** 2
-    beta = 1.25
-    lambda_ = beta
-    g = gamma
 
-    # Создаём mesh и функциональное пространство
-    mesh = generate_mesh(Cylinder(Point(0.0, 0.0, L),
-                                  Point(0.0, 0.0, 0.0),
-                                  R, R), 64)
-    V = VectorFunctionSpace(mesh, 'P', 1)
+class ElasticitySover:
+    def __init__(self):
+        self._create_mesh()
+        self._create_function_space()
+        self._create_boundary_conditions()
+        self._create_rhs_function()
 
-    # Настраиваем граничные условия
-    tol = 1e-4
+    def _create_boundary_conditions(self):
+        self.dirichlet_bc = self._create_dirichlet_bc()
 
+    def _create_function_space(self):
+        self.function_space = VectorFunctionSpace(self.mesh, 'P', 1)
 
-    def clamped_boundary(x, on_boundary):
-        return on_boundary and x[2] < tol
+    def _create_rhs_function(self):
+        rho = 1
+        gamma = 10
+        self.rhs_function = Constant((0, 0, -rho * gamma))
 
+    def _create_mesh(self):
+        L = 0.2
+        R = 1.0
+        self.mesh = generate_mesh(Cylinder(Point(0.0, 0.0, L),
+                                           Point(0.0, 0.0, 0.0),
+                                           R, R), 64)
 
-    bc = DirichletBC(V, Constant((0, 0, 0)), clamped_boundary)
+    def _create_dirichlet_bc(self):
+        def clamped_boundary(x, on_boundary):
+            tol = 1e-4
+            return on_boundary and x[2] < tol
 
+        return DirichletBC(self.function_space,
+                           Constant((0.0, 0.0, 0.0)),
+                           clamped_boundary)
 
-    # Определим \eps и \sigma
-    def epsilon(u):
+    @staticmethod
+    def _epsilon(u):
         return 0.5 * (nabla_grad(u) + nabla_grad(u).T)
 
+    @staticmethod
+    def _sigma(u):
+        lambda_ = 1.25
+        mu = 1.0
+        return lambda_ * nabla_div(u) * Identity(3) + 2 * mu * ElasticitySover._epsilon(u)
 
-    def sigma(u):
-        return lambda_ * nabla_div(u) * Identity(3) + 2 * mu * epsilon(u)
+    def run(self):
+        u = TrialFunction(self.function_space)
+        v = TestFunction(self.function_space)
+
+        T = Constant((0.0, 0.0, 0.0))
+
+        a = inner(ElasticitySover._sigma(u),
+                  ElasticitySover._epsilon(v)) * dX
+        L = dot(self.rhs_function, v) * dX + dot(T, v) * ds
+
+        u = Function(self.function_space)
+        solve(a == L, u, self.dirichlet_bc)
+
+        vtk_file = File('../output/elasticity/solution.pvd')
+
+        vtk_file << u
 
 
-    u = TrialFunction(V)
-    d = u.geometric_dimension()
-    v = TestFunction(V)
-    f = Constant((0, 0, -rho * g))
-    T = Constant((0, 0, 0))
-    a = inner(sigma(u), epsilon(v)) * dX
-    L = dot(f, v) * dX + dot(T, v) * ds
-
-    u = Function(V)
-    solve(a == L, u, bc)
-
-    vtk_file = File("../output/elasticity/displacement.pvd")
-    vtk_file << u
-
-    s = sigma(u) - (1. / 3) * tr(sigma(u)) * Identity(3)
-    von_Mises = sqrt(3. / 2 * inner(s, s))
-    V = FunctionSpace(mesh, 'P', 1)
-    von_Mises = project(von_Mises, V)
-
-    vtk_file = File("../output/elasticity/stress.pvd")
-    vtk_file << von_Mises
+if __name__ == '__main__':
+    solver = ElasticitySover()
+    solver.run()
