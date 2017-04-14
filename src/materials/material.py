@@ -17,19 +17,20 @@ class IsotropicMaterial:
         self.mu = mu
         self.beta = beta
 
-    def thermal_expansion_coeff(self):
+    def thermal_expansion(self):
         """
         Температурное расширение
         :return: 
         """
         return - Identity(3) * self.beta
 
-    def stiffness(self):
+    def stiffness(self, u):
         """
         Жёсткость
         :return: 
         """
-        return self.lambda_ * Identity(3) + 2 * self.mu
+        eps = epsilon(u)
+        return self.lambda_ * sum(diag(eps)) * Identity(3) + 2 * self.mu * eps
 
     def stress(self, u, theta):
         """
@@ -38,5 +39,4 @@ class IsotropicMaterial:
         :param theta: температура
         :return: 
         """
-        eps = epsilon(u)
-        return self.stiffness() * eps - self.thermal_expansion_coeff() * theta
+        return self.stiffness(u) - self.thermal_expansion() * theta
