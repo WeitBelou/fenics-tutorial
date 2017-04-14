@@ -1,11 +1,13 @@
 # coding=utf-8
+from fenics import *
+
 from dolfin.cpp.io import File
 from dolfin.cpp.mesh import Point
-from fenics import *
+
 from mshr import generate_mesh, Cylinder
 
 
-class ElasticitySover:
+class ElasticitySolver:
     def __init__(self):
         self._create_mesh()
         self._create_function_space()
@@ -29,6 +31,7 @@ class ElasticitySover:
         self.mesh = generate_mesh(Cylinder(Point(0.0, 0.0, L),
                                            Point(0.0, 0.0, 0.0),
                                            R, R), 64)
+        File("../output/elasticity/mesh.xml") << self.mesh
 
     def _create_dirichlet_bc(self):
         def clamped_boundary(x, on_boundary):
@@ -47,7 +50,7 @@ class ElasticitySover:
     def _sigma(u):
         lambda_ = 1.25
         mu = 1.0
-        return lambda_ * nabla_div(u) * Identity(3) + 2 * mu * ElasticitySover._epsilon(u)
+        return lambda_ * nabla_div(u) * Identity(3) + 2 * mu * ElasticitySolver._epsilon(u)
 
     def run(self):
         u = TrialFunction(self.function_space)
@@ -55,9 +58,9 @@ class ElasticitySover:
 
         T = Constant((0.0, 0.0, 0.0))
 
-        a = inner(ElasticitySover._sigma(u),
-                  ElasticitySover._epsilon(v)) * dX
-        L = dot(self.rhs_function, v) * dX + dot(T, v) * ds
+        a = inner(ElasticitySolver._sigma(u),
+                  ElasticitySolver._epsilon(v)) * dx
+        L = dot(self.rhs_function, v) * dx + dot(T, v) * ds
 
         u = Function(self.function_space)
         solve(a == L, u, self.dirichlet_bc)
@@ -68,5 +71,5 @@ class ElasticitySover:
 
 
 if __name__ == '__main__':
-    solver = ElasticitySover()
+    solver = ElasticitySolver()
     solver.run()
