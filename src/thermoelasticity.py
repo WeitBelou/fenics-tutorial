@@ -17,7 +17,7 @@ class IceIsland:
     def _create_mesh(self):
         return generate_mesh(Cylinder(Point(0.0, 0.0, 0.0),
                                       Point(0.0, 0.0, self.H),
-                                      self.R, self.R), 64)
+                                      self.R, self.R), 256)
 
     def on_bottom_surface(self, x, on_boundary):
         return on_boundary and near(x[2], 0)
@@ -58,6 +58,9 @@ if __name__ == '__main__':
     L = f * v * dx
 
     theta = Function(V, name='T')
-    solve(a == L, theta, bcs=bcs)
+
+    solve(a == L, theta, bcs,
+          solver_parameters=dict(linear_solver='bicgstab',
+                                 preconditioner='sor'))
 
     File("../output/thermo_elasticity/temperature.pvd") << theta
