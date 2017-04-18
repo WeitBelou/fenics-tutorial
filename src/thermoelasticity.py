@@ -26,13 +26,10 @@ class IceIsland:
         return on_boundary and near(x[2], self.H)
 
     def on_underwater_side_surface(self, x, on_boundary):
-        return self.on_side_surface(x, on_boundary) and (x[2] < self.h)
+        return on_boundary and 0 < x[2] < self.h
 
     def on_above_water_side_surface(self, x, on_boundary):
-        return self.on_side_surface(x, on_boundary) and (x[2] > self.h)
-
-    def on_side_surface(self, x, on_boundary):
-        return on_boundary and near(x[0] ** 2 + x[1] ** 2, self.R ** 2)
+        return on_boundary and self.h < x[2] < self.H
 
 
 if __name__ == '__main__':
