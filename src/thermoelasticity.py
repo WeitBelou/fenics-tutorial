@@ -89,7 +89,8 @@ def solve_heat_elasticity_equation(geo, temperature):
         return lambda_ * nabla_div(u) * Identity(3) + 2 * mu * epsilon(u)
 
     a = inner(sigma(u), epsilon(v)) * dx
-    L = dot(f, v) * dx + dot(T, v) * ds + beta * temperature * inner(Identity(3), epsilon(v)) * dx
+
+    L = dot(f, v) * dx + dot(T, v) * ds + beta * (temperature - Constant(270)) * inner(Identity(3), epsilon(v)) * dx
 
     u = Function(V, name='displacement')
 
