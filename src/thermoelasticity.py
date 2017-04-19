@@ -1,8 +1,6 @@
 # coding=utf-8
-from dolfin.cpp.common import has_petsc
 from dolfin.cpp.function import near
 from dolfin.cpp.io import File
-from dolfin.cpp.la import PETScOptions
 from dolfin.cpp.mesh import Point
 from fenics import *
 from mshr import generate_mesh, Cylinder
@@ -19,7 +17,7 @@ class IceIsland:
     def _create_mesh(self):
         return generate_mesh(Cylinder(Point(0.0, 0.0, 0.0),
                                       Point(0.0, 0.0, self.H),
-                                      self.R, self.R), 256)
+                                      self.R, self.R), 100)
 
     def on_bottom_surface(self, x, on_boundary):
         return on_boundary and near(x[2], 0)
@@ -34,7 +32,7 @@ class IceIsland:
         return on_boundary and self.h < x[2] < self.H
 
 
-def solve_heat_equation():
+def solve_heat_equation(geo):
     V = FunctionSpace(geo.mesh, 'P', 1)
 
     u = TrialFunction(V)
@@ -58,13 +56,55 @@ def solve_heat_equation():
           solver_parameters=dict(linear_solver='bicgstab',
                                  preconditioner='sor'))
 
-    File("../output/thermo_elasticity/temperature.pvd") << temperature
-
     return temperature
+
+
+def solve_heat_elasticity_equation(geo, temperature):
+    V = VectorFunctionSpace(geo.mesh, 'P', 1, dim=3)
+
+    u = TrialFunction(V)
+    v = TestFunction(V)
+
+    bcs = [
+        DirichletBC(V, Constant((0, 0, 0)), lambda x, on_boundary: geo.on_bottom_surface(x, on_boundary)),
+    ]
+
+    lambda_ = 1.0e9
+    mu = 1.0e9
+    rho = 922
+    g = 9.8
+
+    beta = 1.0e+4
+
+    # Проседает под своим весом
+    f = Constant((0, 0, -rho * g))
+
+    # Нет внешнего давления
+    T = Constant((0, 0, 0))
+
+    def epsilon(u):
+        return 0.5 * (nabla_grad(u) + nabla_grad(u).T)
+
+    def sigma(u):
+        return lambda_ * nabla_div(u) * Identity(3) + 2 * mu * epsilon(u)
+
+    a = inner(sigma(u), epsilon(v)) * dx
+    L = dot(f, v) * dx + dot(T, v) * ds + beta * temperature * inner(Identity(3), epsilon(v)) * dx
+
+    u = Function(V, name='displacement')
+
+    solve(a == L, u, bcs)
+
+    return u
 
 
 if __name__ == '__main__':
     geo = IceIsland()
 
     # Сперва решаем относительно температуры
-    temperature = solve_heat_equation()
+    temperature = solve_heat_equation(geo)
+    File("../output/thermo_elasticity/temperature.pvd") << temperature
+
+    # Теперь отностительно деформации
+    u = solve_heat_elasticity_equation(geo, temperature)
+    File("../output/thermo_elasticity/displacement.pvd") << u
