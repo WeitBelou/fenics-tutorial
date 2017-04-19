@@ -1,6 +1,8 @@
 # coding=utf-8
+from dolfin.cpp.common import has_petsc
 from dolfin.cpp.function import near
 from dolfin.cpp.io import File
+from dolfin.cpp.la import PETScOptions
 from dolfin.cpp.mesh import Point
 from fenics import *
 from mshr import generate_mesh, Cylinder
@@ -32,11 +34,8 @@ class IceIsland:
         return on_boundary and self.h < x[2] < self.H
 
 
-if __name__ == '__main__':
-    geo = IceIsland()
-
-    # Сперва решаем относительно температуры
-    V = FunctionSpace(geo.mesh, 'P', 2)
+def solve_heat_equation():
+    V = FunctionSpace(geo.mesh, 'P', 1)
 
     u = TrialFunction(V)
     v = TestFunction(V)
@@ -49,15 +48,23 @@ if __name__ == '__main__':
         DirichletBC(V, Constant(270), lambda x, on_boundary: geo.on_bottom_surface(x, on_boundary))
     ]
 
-    f = Constant(0)
-
+    f = Constant(0.0)
     a = dot(u, v) * dx
     L = f * v * dx
 
-    theta = Function(V, name='T')
+    temperature = Function(V, name='T')
 
-    solve(a == L, theta, bcs,
+    solve(a == L, temperature, bcs,
           solver_parameters=dict(linear_solver='bicgstab',
                                  preconditioner='sor'))
 
-    File("../output/thermo_elasticity/temperature.pvd") << theta
+    File("../output/thermo_elasticity/temperature.pvd") << temperature
+
+    return temperature
+
+
+if __name__ == '__main__':
+    geo = IceIsland()
+
+    # Сперва решаем относительно температуры
+    temperature = solve_heat_equation()
